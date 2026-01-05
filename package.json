@@ -2,13 +2,10 @@
     "name": "myfreemusic-backend",
     "version": "1.0.0",
     "private": true,
-    "workspaces": [
-        "apps/*",
-        "packages/*"
-    ],
     "scripts": {
-        "dev:api": "npm run dev --workspace=apps/music-api",
-        "dev:streaming": "npm run dev --workspace=apps/streaming-service",
-        "dev": "npm run dev:api & npm run dev:streaming"
+        "dev:api": "pnpm --filter @myfreemusic/music-api dev",
+        "dev:streaming": "pnpm --filter @myfreemusic/streaming-service dev",
+        "dev": "pnpm run dev:api & pnpm run dev:streaming",
+        "install:all": "pnpm install"
     }
 }
