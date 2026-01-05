@@ -1,0 +1,6 @@
+{
+    "name": "@myfreemusic/shared-utils",
+    "version": "1.0.0",
+    "main": "index.js",
+    "description": "Shared utilities for MyFreeMusic backend services"
+}

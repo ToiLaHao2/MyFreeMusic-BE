@@ -1,0 +1,6 @@
+{
+    "name": "@myfreemusic/shared-config",
+    "version": "1.0.0",
+    "main": "index.js",
+    "description": "Shared configuration for MyFreeMusic backend services"
+}
