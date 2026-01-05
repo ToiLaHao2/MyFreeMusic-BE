@@ -2,12 +2,21 @@
 const { User } = require("../models/user.model");
 
 /**
- * Lấy người dùng theo ID
+ * Lấy người dùng theo ID (không có password)
  */
 async function findById(userId) {
     return await User.findOne({
         where: { user_id: userId },
         attributes: { exclude: ["user_hash_password", "user_refresh_token"] },
+    });
+}
+
+/**
+ * Lấy người dùng theo ID (đầy đủ thông tin - dùng nội bộ)
+ */
+async function findByIdFull(userId) {
+    return await User.findOne({
+        where: { user_id: userId },
     });
 }
 
@@ -59,6 +68,7 @@ async function setActive(userId, isActive) {
 
 module.exports = {
     findById,
+    findByIdFull,
     findByEmail,
     update,
     updateAvatar,
