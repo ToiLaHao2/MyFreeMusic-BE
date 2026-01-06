@@ -4,12 +4,11 @@ const fs = require("fs");
 
 async function convertToHLS(inputPath, outputDir) {
     return new Promise((resolve, reject) => {
+        // Path to ffmpeg in MyFreeMusic-BE/tools/ffmpeg/bin/
         const ffmpegPath = path.resolve(
             __dirname,
-            "..",
-            "ffmpeg-7.1.1-essentials_build",
-            "bin",
-            "ffmpeg.exe"
+            "..", "..", "..", "..",
+            "tools", "ffmpeg", "bin", "ffmpeg.exe"
         );
 
         // Đảm bảo thư mục đầu ra tồn tại

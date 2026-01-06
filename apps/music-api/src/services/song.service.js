@@ -5,15 +5,12 @@ const songRepository = require("../repositories/song.repository");
 const artistRepository = require("../repositories/artist.repository");
 const genreRepository = require("../repositories/genre.repository");
 const fingerprintService = require("./fingerprint.service");
-const cloudinary = require("../config/cloudinary.config");
 const { convertToHLS } = require("../util/hlsHelper");
 const { downloadYoutubeAudio } = require("../util/youtubeHelpers");
+const storage = require("../util/storage");
 const fs = require("fs");
 const path = require("path");
-const playlistService = require("./playlist.service"); // [NEW]
-
-// Centralized storage path: apps/songs-storage/
-const SONGS_STORAGE_PATH = path.join(__dirname, "..", "..", "..", "..", "songs-storage");
+const playlistService = require("./playlist.service");
 
 /**
  * Lấy tất cả bài hát
@@ -61,7 +58,7 @@ function validateFile(file, allowedTypes, maxSize) {
  * Thêm bài hát từ thiết bị (với duplicate detection)
  */
 async function addSongFromDevice(data, songFile, coverFile, options = {}) {
-    const { songTitle, songGenreId, songArtistId } = data;
+    const { songTitle, songGenreId, songArtistId, songArtistName } = data;
     const { skipDuplicateCheck = false } = options;
 
     // Validate files
@@ -82,14 +79,15 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
         throw new Error("File ảnh bìa không hợp lệ (chỉ nhận .jpg/.png, tối đa 5MB)");
     }
 
-    // Validate artist & genre exist (optional)
-    if (songArtistId) {
-        const artist = await artistRepository.findById(songArtistId);
-        if (!artist) {
-            throw new Error("Nghệ sĩ không tồn tại.");
-        }
+    // Handle artist: find by ID, or find/create by name
+    let finalArtistId = songArtistId || null;
+    if (!finalArtistId && songArtistName) {
+        // Try to find artist by name, or create new one
+        const artist = await artistRepository.findOrCreate(songArtistName);
+        finalArtistId = artist.id;
     }
 
+    // Validate genre exists (optional)
     if (songGenreId) {
         const genre = await genreRepository.findById(songGenreId);
         if (!genre) {
@@ -128,20 +126,20 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
         duration = duplicateCheck.duration;
     }
 
-    // Upload cover to Cloudinary
-    const cloudinaryResult = await cloudinary.uploader.upload(coverFile.path, {
-        folder: "music_app/covers",
-    });
-    fs.unlinkSync(coverFile.path);
 
-    // Save original file to 'original' folder
-    const originalExtension = path.extname(songFile.originalname);
-    const originalFileName = `${slug}${originalExtension}`;
-    const originalFilePath = path.join(SONGS_STORAGE_PATH, "original", originalFileName);
-    fs.copyFileSync(songFile.path, originalFilePath);
+
+
+    // Generate slug from title
+    const slug = generateSlug(songTitle);
+
+    // Save cover image using storage abstraction
+    const coverUrl = await storage.saveCover(coverFile, slug);
+
+    // Save original audio file
+    storage.saveOriginalAudio(songFile, slug);
 
     // Convert to HLS
-    const hlsOutputPath = path.join(SONGS_STORAGE_PATH, "hls", slug);
+    const hlsOutputPath = storage.getHlsOutputPath(slug);
     await convertToHLS(songFile.path, hlsOutputPath);
 
     // Clean up temp upload file
@@ -151,10 +149,10 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
     const newSong = await songRepository.create({
         title: songTitle,
         slug: slug,
-        fileUrl: `${hlsOutputPath}/index.m3u8`, // Keeping absolute path for now as per existing pattern
-        coverUrl: cloudinaryResult.secure_url,
+        fileUrl: storage.getHlsUrl(slug),
+        coverUrl: coverUrl,
         genre_id: songGenreId || null,
-        artist_id: songArtistId || null,
+        artist_id: finalArtistId,
         source: "DEVICE",
         fingerprint: fingerprint,
         duration_seconds: duration,
@@ -267,29 +265,31 @@ async function addSongFromYoutube(ytbURL, options = {}) {
         duration = duplicateCheck.duration;
     }
 
-    // Save original file to 'original' folder
-    const originalFileName = `${slug}.mp3`;
-    const originalFilePath = path.join(SONGS_STORAGE_PATH, "original", originalFileName);
+    // Generate slug from title
+    const slug = generateSlug(title);
+
+
+    // Save original file using storage abstraction
+    storage.ensureDir(storage.PATHS.original);
+    const originalFilePath = path.join(storage.PATHS.original, `${slug}.mp3`);
     fs.copyFileSync(filePath, originalFilePath);
 
     // Convert to HLS
-    const hlsOutputPath = path.join(SONGS_STORAGE_PATH, "hls", slug);
+    const hlsOutputPath = storage.getHlsOutputPath(slug);
     await convertToHLS(filePath, hlsOutputPath);
 
     // Clean up temp downloaded file
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
-    // Upload thumbnail to Cloudinary
-    const cloudinaryResult = await cloudinary.uploader.upload(thumbnail_url, {
-        folder: "music_app/covers",
-    });
+    // Save cover using storage abstraction
+    const coverUrl = await storage.saveCoverFromUrl(thumbnail_url, slug);
 
     // Create song with fingerprint and youtube_id
     const newSong = await songRepository.create({
         title: title,
         slug: slug,
-        fileUrl: `${hlsOutputPath}/index.m3u8`,
-        coverUrl: cloudinaryResult.secure_url,
+        fileUrl: storage.getHlsUrl(slug),
+        coverUrl: coverUrl,
         source: "YOUTUBE",
         youtube_id: youtubeId,
         fingerprint: fingerprint,

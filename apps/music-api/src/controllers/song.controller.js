@@ -10,12 +10,23 @@ const { sendError, sendSuccess } = require("../util/response");
  */
 async function AddNewSongFromDevice(req, res) {
     try {
-        const { songTitle, songGenreId, songArtistId, skipDuplicateCheck } = req.body;
+        // DEBUG: Log what we receive
+        logger.info("=== DEBUG: AddNewSongFromDevice ===");
+        logger.info("req.body:", JSON.stringify(req.body));
+        logger.info("req.files:", req.files ? Object.keys(req.files) : "NO FILES");
+        if (req.files?.songFile) {
+            logger.info("songFile:", req.files.songFile[0]?.originalname, req.files.songFile[0]?.size, "bytes");
+        }
+        if (req.files?.songCover) {
+            logger.info("songCover:", req.files.songCover[0]?.originalname, req.files.songCover[0]?.size, "bytes");
+        }
+
+        const { songTitle, songGenreId, songArtistId, songArtistName, skipDuplicateCheck } = req.body;
         const songFile = req.files?.songFile?.[0];
         const songCover = req.files?.songCover?.[0];
 
         const result = await songService.addSongFromDevice(
-            { songTitle, songGenreId, songArtistId },
+            { songTitle, songGenreId, songArtistId, songArtistName },
             songFile,
             songCover,
             { skipDuplicateCheck: skipDuplicateCheck === "true" }
@@ -37,8 +48,9 @@ async function AddNewSongFromDevice(req, res) {
             song: result.song,
         });
     } catch (error) {
-        logger.error("Lỗi khi thêm bài hát từ thiết bị:", error);
-        return sendError(res, 400, error.message);
+        logger.error(`Lỗi khi thêm bài hát từ thiết bị: ${error}`);
+        logger.error(`Stack: ${error}`);
+        return sendError(res, 400, error);
     }
 }
 
@@ -68,8 +80,8 @@ async function AddNewSongFromYtUrl(req, res) {
             song: result.song,
         });
     } catch (error) {
-        logger.error("Lỗi khi thêm bài hát từ Youtube:", error);
-        return sendError(res, 400, error.message);
+        logger.error(`Lỗi khi thêm bài hát từ Youtube: ${error}`);
+        return sendError(res, 400, error);
     }
 }
 
@@ -85,8 +97,8 @@ async function GetAllSongs(req, res) {
             songs,
         });
     } catch (error) {
-        logger.error("Lỗi khi lấy danh sách bài hát:", error);
-        return sendError(res, 500, "Lỗi hệ thống.");
+        logger.error(`Lỗi khi lấy danh sách bài hát: ${error}`);
+        return sendError(res, 500, error);
     }
 }
 
@@ -101,9 +113,9 @@ async function GetSongById(req, res) {
             song,
         });
     } catch (error) {
-        logger.error("Lỗi khi lấy bài hát theo id:", error);
+        logger.error(`Lỗi khi lấy bài hát theo id: ${error}`);
         const statusCode = error.message.includes("không tồn tại") ? 404 : 500;
-        return sendError(res, statusCode, error.message);
+        return sendError(res, statusCode, error);
     }
 }
 
@@ -118,9 +130,9 @@ async function UpdateSong(req, res) {
             song,
         });
     } catch (error) {
-        logger.error("Lỗi khi cập nhật bài hát:", error);
+        logger.error(`Lỗi khi cập nhật bài hát: ${error}`);
         const statusCode = error.message.includes("không tồn tại") ? 404 : 500;
-        return sendError(res, statusCode, error.message);
+        return sendError(res, statusCode, error);
     }
 }
 
@@ -134,9 +146,9 @@ async function DeleteSong(req, res) {
             message: "Xóa bài hát thành công.",
         });
     } catch (error) {
-        logger.error("Lỗi khi xóa bài hát:", error);
+        logger.error(`Lỗi khi xóa bài hát: ${error}`);
         const statusCode = error.message.includes("không tồn tại") ? 404 : 500;
-        return sendError(res, statusCode, error.message);
+        return sendError(res, statusCode, error);
     }
 }
 
@@ -151,8 +163,8 @@ async function FilterSongByName(req, res) {
             songs,
         });
     } catch (error) {
-        logger.error("Lỗi khi lọc bài hát theo tên:", error);
-        return sendError(res, 500, "Lỗi hệ thống.");
+        logger.error(`Lỗi khi lọc bài hát theo tên: ${error}`);
+        return sendError(res, 500, error);
     }
 }
 
@@ -167,8 +179,8 @@ async function FilterSongByArtist(req, res) {
             songs,
         });
     } catch (error) {
-        logger.error("Lỗi khi lọc bài hát theo nghệ sĩ:", error);
-        return sendError(res, 500, "Lỗi hệ thống.");
+        logger.error(`Lỗi khi lọc bài hát theo nghệ sĩ: ${error}`);
+        return sendError(res, 500, error);
     }
 }
 
@@ -183,8 +195,8 @@ async function FilterSongByGenre(req, res) {
             songs,
         });
     } catch (error) {
-        logger.error("Lỗi khi lọc bài hát theo thể loại:", error);
-        return sendError(res, 500, "Lỗi hệ thống.");
+        logger.error(`Lỗi khi lọc bài hát theo thể loại: ${error}`);
+        return sendError(res, 500, error);
     }
 }
 
@@ -205,8 +217,8 @@ async function StreamSong(req, res) {
             song
         });
     } catch (error) {
-        logger.error("Error streaming song:", error);
-        return sendError(res, 404, error.message);
+        logger.error(`Error streaming song: ${error}`);
+        return sendError(res, 404, error);
     }
 }
 

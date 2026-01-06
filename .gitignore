@@ -57,3 +57,9 @@ temp/
 
 # FFmpeg build zip (already extracted to tools/)
 ffmpeg-7.1.1-essentials_build.zip
+
+# Songs storage (uploaded files, HLS streams, covers)
+# Keep .gitkeep files to preserve folder structure
+apps/songs-storage/
+!apps/songs-storage/.gitkeep
+!apps/songs-storage/*/.gitkeep
