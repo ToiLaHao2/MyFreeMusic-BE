@@ -1,7 +1,4 @@
 // controllers/auth.controller.js
-// Controller layer - Only handles HTTP request/response
-// Business logic is delegated to the service layer
-
 const authService = require("../services/auth.service");
 const { sendSuccess, sendError } = require("../util/response");
 const logger = require("../util/logger");
@@ -11,12 +8,15 @@ const logger = require("../util/logger");
  */
 async function refreshAccessToken(req, res) {
     try {
-        const { refreshToken } = req.body;
+        const { refreshToken, device_type } = req.body;
         if (!refreshToken) {
             return sendError(res, 401, "Refresh token không được cung cấp.");
         }
 
-        const result = await authService.refreshAccessToken(refreshToken);
+        // Get device type from body or header
+        const deviceType = device_type || req.headers['x-device-type'];
+
+        const result = await authService.refreshAccessToken(refreshToken, deviceType);
         if (!result.success) {
             return sendError(res, 403, result.message);
         }
@@ -36,9 +36,18 @@ async function refreshAccessToken(req, res) {
  */
 async function login(req, res) {
     try {
-        const { user_email, user_password } = req.body;
+        const { user_email, user_password, device_type, remember_me } = req.body;
 
-        const result = await authService.login(user_email, user_password);
+        if (!user_email || !user_password) {
+            return sendError(res, 400, "Email và mật khẩu là bắt buộc.");
+        }
+
+        // Validate device_type
+        const validDeviceTypes = ['web', 'app'];
+        const deviceType = device_type && validDeviceTypes.includes(device_type) ? device_type : 'web';
+
+        const result = await authService.login(user_email, user_password, deviceType, remember_me);
+
         if (!result.success) {
             return sendError(res, 401, result.message);
         }
@@ -47,10 +56,11 @@ async function login(req, res) {
             message: "Đăng nhập thành công.",
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,
+            user: result.user
         });
     } catch (error) {
         logger.error("Error during login: ", error);
-        return sendError(res, 500, "Lỗi không xác định.");
+        return sendError(res, 500, `Lỗi: ${error.message}`);
     }
 }
 
@@ -59,9 +69,11 @@ async function login(req, res) {
  */
 async function logout(req, res) {
     try {
-        const { user_id } = req.body;
+        // user_id comes from authMiddleware
+        const user_id = req.user_id;
+        const { refreshToken } = req.body;
 
-        const result = await authService.logout(user_id);
+        const result = await authService.logout(user_id, refreshToken);
         if (!result.success) {
             return sendError(res, 404, result.message);
         }
@@ -81,6 +93,13 @@ async function logout(req, res) {
 async function changePassword(req, res) {
     try {
         const { user_id, old_password, new_password } = req.body;
+
+        // Ensure user can only change their own password unless admin
+        // req.user_id comes from token
+        if (req.user_id !== user_id) {
+            // Optional: check if admin in future
+            return sendError(res, 403, "Không có quyền thực hiện.");
+        }
 
         const result = await authService.changePassword(user_id, old_password, new_password);
         if (!result.success) {

@@ -12,9 +12,7 @@
     "license": "ISC",
     "description": "Main API service for MyFreeMusic",
     "dependencies": {
-        "@myfreemusic/shared-config": "workspace:*",
         "@myfreemusic/shared-utils": "workspace:*",
-        "bcrypt": "^5.1.1",
         "bcryptjs": "^2.4.3",
         "body-parser": "^1.20.3",
         "cloudinary": "^1.41.3",

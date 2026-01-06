@@ -10,8 +10,9 @@ const { convertToHLS } = require("../util/hlsHelper");
 const { downloadYoutubeAudio } = require("../util/youtubeHelpers");
 const fs = require("fs");
 const path = require("path");
+const playlistService = require("./playlist.service"); // [NEW]
 
-const SONGS_STORAGE_PATH = path.join(__dirname, "..", "..", "songs-storage");
+const SONGS_STORAGE_PATH = path.join(__dirname, "..", "..", "..", "streaming-service", "musics");
 
 /**
  * Lấy tất cả bài hát
@@ -132,23 +133,37 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
     });
     fs.unlinkSync(coverFile.path);
 
+    // Save original file to 'original' folder
+    const originalExtension = path.extname(songFile.originalname);
+    const originalFileName = `${slug}${originalExtension}`;
+    const originalFilePath = path.join(SONGS_STORAGE_PATH, "original", originalFileName);
+    fs.copyFileSync(songFile.path, originalFilePath);
+
     // Convert to HLS
-    const slug = generateSlug(songTitle);
     const hlsOutputPath = path.join(SONGS_STORAGE_PATH, "hls", slug);
     await convertToHLS(songFile.path, hlsOutputPath);
+
+    // Clean up temp upload file
+    if (fs.existsSync(songFile.path)) fs.unlinkSync(songFile.path);
 
     // Create song in database with fingerprint
     const newSong = await songRepository.create({
         title: songTitle,
         slug: slug,
-        fileUrl: `${hlsOutputPath}/index.m3u8`,
+        fileUrl: `${hlsOutputPath}/index.m3u8`, // Keeping absolute path for now as per existing pattern
         coverUrl: cloudinaryResult.secure_url,
         genre_id: songGenreId || null,
         artist_id: songArtistId || null,
         source: "DEVICE",
         fingerprint: fingerprint,
         duration_seconds: duration,
+        uploaded_by: options.userId
     });
+
+    // P1-28: Auto-add to "Uploads" playlist
+    if (options.userId) {
+        await playlistService.autoAddSongToUploads(options.userId, newSong.id);
+    }
 
     return {
         isDuplicate: false,
@@ -251,10 +266,17 @@ async function addSongFromYoutube(ytbURL, options = {}) {
         duration = duplicateCheck.duration;
     }
 
+    // Save original file to 'original' folder
+    const originalFileName = `${slug}.mp3`;
+    const originalFilePath = path.join(SONGS_STORAGE_PATH, "original", originalFileName);
+    fs.copyFileSync(filePath, originalFilePath);
+
     // Convert to HLS
-    const slug = generateSlug(title);
     const hlsOutputPath = path.join(SONGS_STORAGE_PATH, "hls", slug);
     await convertToHLS(filePath, hlsOutputPath);
+
+    // Clean up temp downloaded file
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     // Upload thumbnail to Cloudinary
     const cloudinaryResult = await cloudinary.uploader.upload(thumbnail_url, {
@@ -271,7 +293,13 @@ async function addSongFromYoutube(ytbURL, options = {}) {
         youtube_id: youtubeId,
         fingerprint: fingerprint,
         duration_seconds: duration,
+        uploaded_by: options.userId
     });
+
+    // P1-28: Auto-add to "Uploads" playlist
+    if (options.userId) {
+        await playlistService.autoAddSongToUploads(options.userId, newSong.id);
+    }
 
     return {
         isDuplicate: false,

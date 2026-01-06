@@ -5,7 +5,10 @@
     "scripts": {
         "dev:api": "pnpm --filter @myfreemusic/music-api dev",
         "dev:streaming": "pnpm --filter @myfreemusic/streaming-service dev",
-        "dev": "pnpm run dev:api & pnpm run dev:streaming",
+        "dev": "concurrently -n \"API,STREAM\" -c \"blue,magenta\" \"pnpm run dev:api\" \"pnpm run dev:streaming\"",
         "install:all": "pnpm install"
+    },
+    "devDependencies": {
+        "concurrently": "^9.2.1"
     }
 }

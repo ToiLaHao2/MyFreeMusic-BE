@@ -26,4 +26,7 @@ songRouter.get("/filter/name", FilterSongByName);
 songRouter.get("/filter/artist", FilterSongByArtist);
 songRouter.get("/filter/genre", FilterSongByGenre);
 
+// Stream
+songRouter.get("/stream/:id", require("../controllers/song.controller").StreamSong);
+
 module.exports = songRouter;

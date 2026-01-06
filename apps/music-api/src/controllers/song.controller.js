@@ -188,6 +188,28 @@ async function FilterSongByGenre(req, res) {
     }
 }
 
+/**
+ * Stream Song (Get HLS URL)
+ */
+async function StreamSong(req, res) {
+    try {
+        const song = await songService.getSongById(req.params.id);
+
+        // Construct HLS URL pointing to Streaming Service (Port 4000)
+        // song.slug is used to match directory structure: musics/hls/<slug>/index.m3u8
+        const streamUrl = `http://localhost:4000/hls/${song.slug}/index.m3u8`;
+
+        return sendSuccess(res, 200, {
+            message: "Ready to stream",
+            streamUrl,
+            song
+        });
+    } catch (error) {
+        logger.error("Error streaming song:", error);
+        return sendError(res, 404, error.message);
+    }
+}
+
 module.exports = {
     AddNewSongFromDevice,
     AddNewSongFromYtUrl,
@@ -198,4 +220,5 @@ module.exports = {
     FilterSongByName,
     FilterSongByArtist,
     FilterSongByGenre,
+    StreamSong
 };

@@ -1,6 +1,6 @@
 const { Model, DataTypes } = require("sequelize");
 
-class User extends Model {}
+class User extends Model { }
 
 const initUser = (sequelize) => {
     User.init(
@@ -15,6 +15,10 @@ const initUser = (sequelize) => {
             user_hash_password: DataTypes.STRING,
             user_phone_number: DataTypes.STRING,
             user_profile_picture: DataTypes.STRING,
+            role: {
+                type: DataTypes.ENUM('ADMIN', 'USER'),
+                defaultValue: 'USER',
+            },
             user_is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
             created_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
             updated_at: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
