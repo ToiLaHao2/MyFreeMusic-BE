@@ -2,12 +2,13 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
+// Centralized storage path: apps/songs-storage/
+const SONGS_STORAGE_BASE = path.join(__dirname, "..", "..", "..", "..", "songs-storage");
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const isAudio = file.mimetype.startsWith("audio/");
-        let folder = "songs-storage/temp"; // mặc định cho mọi file
-
-        if (isAudio) folder = "songs-storage/original";
+        // All uploads go to temp first, then moved by service after processing
+        const folder = path.join(SONGS_STORAGE_BASE, "temp");
 
         // Tạo thư mục nếu chưa có
         if (!fs.existsSync(folder)) {

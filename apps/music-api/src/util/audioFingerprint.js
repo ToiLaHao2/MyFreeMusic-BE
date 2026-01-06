@@ -6,7 +6,8 @@ const path = require("path");
 const fs = require("fs");
 
 // Path to fpcalc executable
-const FPCALC_PATH = path.join(__dirname, "..", "..", "..", "tools", "fpcalc.exe");
+// Path to fpcalc executable in MyFreeMusic-BE/tools/
+const FPCALC_PATH = path.join(__dirname, "..", "..", "..", "..", "tools", "fpcalc.exe");
 
 /**
  * Generate audio fingerprint from file

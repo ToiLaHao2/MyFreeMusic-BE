@@ -12,7 +12,8 @@ const fs = require("fs");
 const path = require("path");
 const playlistService = require("./playlist.service"); // [NEW]
 
-const SONGS_STORAGE_PATH = path.join(__dirname, "..", "..", "..", "streaming-service", "musics");
+// Centralized storage path: apps/songs-storage/
+const SONGS_STORAGE_PATH = path.join(__dirname, "..", "..", "..", "..", "songs-storage");
 
 /**
  * Lấy tất cả bài hát
