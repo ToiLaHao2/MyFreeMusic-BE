@@ -32,11 +32,11 @@ const PlaylistSong = initPlaylistSong(sequelize);
 User.hasMany(Playlist, { foreignKey: "user_id" });
 Playlist.belongsTo(User, { foreignKey: "user_id" });
 
-Genre.hasMany(Song, { foreignKey: "genre_id" });
-Song.belongsTo(Genre, { foreignKey: "genre_id" });
+Genre.hasMany(Song, { foreignKey: "genre_id", as: "songs" });
+Song.belongsTo(Genre, { foreignKey: "genre_id", as: "genre" });
 
-Artist.hasMany(Song, { foreignKey: "artist_id" });
-Song.belongsTo(Artist, { foreignKey: "artist_id" });
+Artist.hasMany(Song, { foreignKey: "artist_id", as: "songs" });
+Song.belongsTo(Artist, { foreignKey: "artist_id", as: "artist" });
 
 Playlist.belongsToMany(Song, { through: PlaylistSong, foreignKey: "playlist_id" });
 Song.belongsToMany(Playlist, { through: PlaylistSong, foreignKey: "song_id" });

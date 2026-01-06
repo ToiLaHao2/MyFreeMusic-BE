@@ -76,10 +76,12 @@ const initSong = (sequelize) => {
             modelName: "Song",
             tableName: "songs",
             timestamps: true,
-            indexes: [
-                { fields: ["youtube_id"] },
-                { fields: ["duration_seconds"] },
-            ],
+            tableName: "songs",
+            timestamps: true,
+            // indexes: [
+            //     { fields: ["youtube_id"] },
+            //     { fields: ["duration_seconds"] },
+            // ],
         }
     );
 

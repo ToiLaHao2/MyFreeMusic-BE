@@ -58,11 +58,15 @@ async function initializeDatabase() {
     const { sequelize } = require("./models");
 
     // Đồng bộ hóa cơ sở dữ liệu (tạo bảng nếu chưa có)
-    await sequelize.sync({ alter: true });
+    // Sử dụng sync() đơn giản để tránh lỗi foreign key khi dùng alter: true
+    // Nếu cần reset database hoàn toàn, dùng: await sequelize.sync({ force: true });
+    await sequelize.sync();
     logger.info("✅ Các bảng đã được tạo/đồng bộ thành công.");
 
     // Seed Admin
     await seedAdmin();
+    await require("./seeders/genre.seeder")();
+    await require("./seeders/artist.seeder")();
 
     return sequelize;
 }
@@ -72,6 +76,8 @@ async function initializeDatabase() {
 app.use("/api/auth", authRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/playlists", playlistRoutes);
+app.use("/api/genres", require("./routes/genre.route"));
+app.use("/api/artists", require("./routes/artist.route"));
 
 app.get("/", (req, res) => {
     res.send("Đây là server Express 🎶");

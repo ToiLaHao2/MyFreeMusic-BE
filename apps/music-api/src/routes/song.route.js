@@ -10,13 +10,17 @@ const {
     FilterSongByArtist,
     FilterSongByGenre,
 } = require("../controllers/song.controller");
+const upload = require("../middlewares/upload.middleware");
 
 const songRouter = express.Router();
 
 // CRUD
 songRouter.get("/", GetAllSongs);
 songRouter.get("/:id", GetSongById);
-songRouter.post("/addNewSongFromDevice", AddNewSongFromDevice);
+songRouter.post("/addNewSongFromDevice", upload.fields([
+    { name: 'songFile', maxCount: 1 },
+    { name: 'songCover', maxCount: 1 }
+]), AddNewSongFromDevice);
 songRouter.post("/addNewSongFromYtUrl", AddNewSongFromYtUrl);
 songRouter.put("/:id", UpdateSong);
 songRouter.delete("/:id", DeleteSong);
