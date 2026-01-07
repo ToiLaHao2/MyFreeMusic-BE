@@ -2,54 +2,57 @@ const { exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 const { v4: uuidv4 } = require("uuid");
+const storage = require("./storage");
 
-async function downloadYoutubeAudio(
-    ytbURL,
-    outputDir = "../songs-storage/original"
-) {
-    try {
-        const id = uuidv4();
-        const outputPath = path.join(outputDir, `${id}.mp3`);
+async function downloadYoutubeAudio(ytbURL) {
+    const id = uuidv4();
 
-        // Tạo thư mục nếu chưa có
-        if (!fs.existsSync(outputDir)) {
-            fs.mkdirSync(outputDir, { recursive: true });
-        }
+    // Use storage utility for temp directory
+    storage.ensureDir(storage.PATHS.temp);
+    const outputPath = path.join(storage.PATHS.temp, `${id}.mp3`);
 
-        // Đảm bảo đường dẫn chính xác tới ffmpeg và yt-dlp
-        const ytDlpPath = path.resolve(__dirname, "..", "yt-dlp.exe");
-        const ffmpegPath = path.resolve(
-            __dirname,
-            "..",
-            "ffmpeg-7.1.1-essentials_build",
-            "bin",
-            "ffmpeg.exe"
-        );
+    // Paths to tools in MyFreeMusic-BE/tools/
+    const ytDlpPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "yt-dlp.exe");
+    const ffmpegPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "ffmpeg", "bin", "ffmpeg.exe");
 
-        // Lệnh yt-dlp
-        const command = `"${ytDlpPath}" --ffmpeg-location "${ffmpegPath}" -x --audio-format mp3 -o "${outputPath}" "${ytbURL}"`;
-
-        console.log(`Running command: ${command}`); // Log lệnh đang chạy
-
-        // Sử dụng Promise để chạy lệnh trong exec và chờ kết quả
-        const result = await new Promise((resolve, reject) => {
-            exec(command, (error, stdout, stderr) => {
-                if (error) {
-                    console.error("YT-DLP error:", stderr); // Log chi tiết lỗi từ stderr
-                    return reject(new Error(`YT-DLP error: ${stderr}`));
-                }
-                if (stdout) {
-                    console.log("YT-DLP output:", stdout); // Log thông tin trả về từ stdout
-                }
-                resolve(outputPath); // Trả về đường dẫn file mp3
-            });
-        });
-
-        return result;
-    } catch (error) {
-        console.error("Lỗi khi tải bài hát từ YouTube:", error);
-        throw new Error("Không thể tải bài hát từ YouTube.");
+    // Verify tools exist
+    if (!fs.existsSync(ytDlpPath)) {
+        throw new Error(`yt-dlp.exe not found at: ${ytDlpPath}`);
     }
+    if (!fs.existsSync(ffmpegPath)) {
+        throw new Error(`ffmpeg.exe not found at: ${ffmpegPath}`);
+    }
+
+    // yt-dlp command with --no-playlist to avoid downloading entire playlists
+    const command = `"${ytDlpPath}" --ffmpeg-location "${ffmpegPath}" -x --audio-format mp3 --no-playlist -o "${outputPath}" "${ytbURL}"`;
+
+    console.log(`[YouTube] Starting download...`);
+    console.log(`[YouTube] URL: ${ytbURL}`);
+    console.log(`[YouTube] Output: ${outputPath}`);
+    console.log(`[YouTube] Command: ${command}`);
+
+    // Execute yt-dlp
+    const result = await new Promise((resolve, reject) => {
+        exec(command, { maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+            console.log(`[YouTube] stdout: ${stdout}`);
+            console.log(`[YouTube] stderr: ${stderr}`);
+
+            if (error) {
+                console.error(`[YouTube] ERROR: ${error.message}`);
+                return reject(new Error(`YT-DLP error: ${stderr || error.message}`));
+            }
+
+            // Verify file was created
+            if (!fs.existsSync(outputPath)) {
+                return reject(new Error(`Download completed but file not found: ${outputPath}`));
+            }
+
+            console.log(`[YouTube] Download completed: ${outputPath}`);
+            resolve(outputPath);
+        });
+    });
+
+    return result;
 }
 
 module.exports = { downloadYoutubeAudio };
