@@ -83,8 +83,8 @@ async function logout(userId, refreshToken) {
  * Làm mới access token
  */
 async function refreshAccessToken(refreshToken, deviceType) {
-    // 1. Verify JWT format
-    const decoded = VerifiedToken(refreshToken);
+    // 1. Verify JWT format - MUST await since VerifiedToken is async!
+    const decoded = await VerifiedToken(refreshToken);
     if (!decoded) {
         return { success: false, message: "Refresh token không hợp lệ." };
     }

@@ -1,3 +1,7 @@
+// IMPORTANT: Load environment variables FIRST before any other imports
+const dotenv = require("dotenv");
+dotenv.config();
+
 const express = require("express");
 const app = express();
 const { Sequelize } = require("sequelize");
@@ -15,10 +19,7 @@ const playlistRoutes = require("./routes/playlist.route");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 const morgan = require("morgan");
-const dotenv = require("dotenv");
 const logger = require("./util/logger");
-
-dotenv.config();
 
 const port = process.env.PORT || 3000;
 
@@ -78,12 +79,14 @@ async function initializeDatabase() {
 }
 
 // Routes
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/songs", songRoutes);
 app.use("/api/playlists", playlistRoutes);
 app.use("/api/genres", require("./routes/genre.route"));
 app.use("/api/artists", require("./routes/artist.route"));
+app.use("/api/admin", require("./routes/admin.route"));
+app.use("/api/analytics", require("./routes/analytics.route"));
+app.use("/api/storage", require("./routes/storage.route"));
 
 app.get("/", (req, res) => {
     res.send("Đây là server Express 🎶");

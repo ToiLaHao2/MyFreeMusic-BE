@@ -40,20 +40,22 @@ const handleUpload = (req, res, next) => {
     });
 };
 
-// CRUD
+// CRUD - Order matters! Put specific routes BEFORE dynamic :id routes
 songRouter.get("/", GetAllSongs);
+
+// Filters - Must be BEFORE /:id to prevent conflict
+songRouter.get("/filter/name", FilterSongByName);
+songRouter.get("/filter/artist", FilterSongByArtist);
+songRouter.get("/filter/genre", FilterSongByGenre);
+
+// Stream - Must be BEFORE /:id
+songRouter.get("/stream/:id", require("../controllers/song.controller").StreamSong);
+
+// Dynamic ID routes LAST
 songRouter.get("/:id", GetSongById);
 songRouter.post("/addNewSongFromDevice", handleUpload, AddNewSongFromDevice);
 songRouter.post("/addNewSongFromYtUrl", AddNewSongFromYtUrl);
 songRouter.put("/:id", UpdateSong);
 songRouter.delete("/:id", DeleteSong);
-
-// Filters
-songRouter.get("/filter/name", FilterSongByName);
-songRouter.get("/filter/artist", FilterSongByArtist);
-songRouter.get("/filter/genre", FilterSongByGenre);
-
-// Stream
-songRouter.get("/stream/:id", require("../controllers/song.controller").StreamSong);
 
 module.exports = songRouter;

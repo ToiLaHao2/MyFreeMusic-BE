@@ -4,7 +4,7 @@ const { sendSuccess, sendError } = require("../util/response");
 async function createPlaylist(req, res) {
     try {
         const result = await playlistService.createPlaylist(req.user_id, req.body);
-        return sendSuccess(res, result, "Playlist created successfully");
+        return sendSuccess(res, "Playlist created successfully", { playlist: result });
     } catch (error) {
         return sendError(res, 500, error.message);
     }
@@ -13,7 +13,7 @@ async function createPlaylist(req, res) {
 async function getMyPlaylists(req, res) {
     try {
         const result = await playlistService.getUserPlaylists(req.user_id);
-        return sendSuccess(res, result);
+        return sendSuccess(res, "Playlists fetched successfully", { playlists: result });
     } catch (error) {
         return sendError(res, 500, error.message);
     }
@@ -22,7 +22,7 @@ async function getMyPlaylists(req, res) {
 async function getPlaylistById(req, res) {
     try {
         const result = await playlistService.getPlaylistById(req.params.id, req.user_id);
-        return sendSuccess(res, result);
+        return sendSuccess(res, "Playlist fetched successfully", { playlist: result });
     } catch (error) {
         return sendError(res, 500, error.message);
     }

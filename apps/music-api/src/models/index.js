@@ -10,6 +10,7 @@ const { initGenre } = require("./genre.model");
 const { initArtist } = require("./artist.model");
 const { initRefreshToken } = require("./refreshToken.model");
 const { initPlaylistSong } = require("./playlistSong.model");
+const { initStorageStats } = require("./storageStats.model");
 
 const sequelize = new Sequelize({
     dialect: "mysql",
@@ -27,6 +28,7 @@ const Genre = initGenre(sequelize);
 const Artist = initArtist(sequelize);
 const RefreshToken = initRefreshToken(sequelize);
 const PlaylistSong = initPlaylistSong(sequelize);
+const StorageStats = initStorageStats(sequelize);
 
 // Associations
 User.hasMany(Playlist, { foreignKey: "user_id" });
@@ -49,5 +51,7 @@ module.exports = {
     Genre,
     Artist,
     RefreshToken,
-    PlaylistSong
+    PlaylistSong,
+    StorageStats
 };
+

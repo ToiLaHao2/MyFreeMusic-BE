@@ -7,16 +7,22 @@ const authMiddleware = async (req, res, next) => {
     const authHeader = req.headers["authorization"];
     const token = authHeader && authHeader.split(" ")[1];
 
+    // Debug logging
+    console.log("[AUTH] Authorization header:", authHeader ? authHeader.substring(0, 50) + "..." : "MISSING");
+    console.log("[AUTH] Token extracted:", token ? token.substring(0, 30) + "..." : "MISSING");
+
     if (!token) {
         return sendError(res, 401, "Không có token xác thực.");
     }
 
     const userRepository = require("../repositories/user.repository");
 
-    // ... inside authMiddleware ...
     try {
         const decoded = await VerifiedToken(token);
+        console.log("[AUTH] Decoded token:", decoded);
+
         if (!decoded) {
+            console.log("[AUTH] Token verification failed - decoded is null");
             return sendError(res, 401, "Token không hợp lệ.");
         }
 
@@ -27,7 +33,7 @@ const authMiddleware = async (req, res, next) => {
         }
 
         req.user_id = decoded.id;
-        req.user = user; // Attach full user object for RBAC
+        req.user = user;
 
         // Check thời gian còn lại
         const timeRemaining = decoded.exp * 1000 - Date.now();
@@ -39,7 +45,11 @@ const authMiddleware = async (req, res, next) => {
 
         next();
     } catch (error) {
-        logger.warn("Token hết hạn hoặc không hợp lệ.");
+        console.log("[AUTH] CATCH ERROR:", error);
+        console.log("[AUTH] Error name:", error.name);
+        console.log("[AUTH] Error message:", error.message);
+        console.log("[AUTH] Error stack:", error.stack);
+        logger.warn("Token hết hạn hoặc không hợp lệ:", error.message);
         return sendError(res, 401, "Token hết hạn hoặc không hợp lệ.");
     }
 };

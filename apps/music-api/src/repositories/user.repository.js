@@ -6,7 +6,7 @@ const { User } = require("../models/user.model");
  */
 async function findById(userId) {
     return await User.findOne({
-        where: { user_id: userId },
+        where: { id: userId },
         attributes: { exclude: ["user_hash_password", "user_refresh_token"] },
     });
 }
@@ -16,7 +16,7 @@ async function findById(userId) {
  */
 async function findByIdFull(userId) {
     return await User.findOne({
-        where: { user_id: userId },
+        where: { id: userId },
     });
 }
 
@@ -33,7 +33,7 @@ async function findByEmail(email) {
  * Cập nhật thông tin người dùng
  */
 async function update(userId, userData) {
-    return await User.update(userData, { where: { user_id: userId } });
+    return await User.update(userData, { where: { id: userId } });
 }
 
 /**
@@ -42,7 +42,7 @@ async function update(userId, userData) {
 async function updateAvatar(userId, avatarUrl) {
     return await User.update(
         { user_profile_picture: avatarUrl },
-        { where: { user_id: userId } }
+        { where: { id: userId } }
     );
 }
 

@@ -5,6 +5,7 @@ const songRepository = require("../repositories/song.repository");
 const artistRepository = require("../repositories/artist.repository");
 const genreRepository = require("../repositories/genre.repository");
 const fingerprintService = require("./fingerprint.service");
+const storageService = require("./storage.service");
 const { convertToHLS } = require("../util/hlsHelper");
 const { downloadYoutubeAudio } = require("../util/youtubeHelpers");
 const storage = require("../util/storage");
@@ -164,6 +165,9 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
         await playlistService.autoAddSongToUploads(options.userId, newSong.id);
     }
 
+    // Update storage stats after adding song
+    storageService.updateStorageStats().catch(err => console.error('Failed to update storage stats:', err));
+
     return {
         isDuplicate: false,
         song: newSong,
@@ -302,6 +306,9 @@ async function addSongFromYoutube(ytbURL, options = {}) {
         await playlistService.autoAddSongToUploads(options.userId, newSong.id);
     }
 
+    // Update storage stats after adding song
+    storageService.updateStorageStats().catch(err => console.error('Failed to update storage stats:', err));
+
     return {
         isDuplicate: false,
         song: newSong,
@@ -334,6 +341,10 @@ async function deleteSong(id) {
     // TODO: Delete cover from Cloudinary
 
     await songRepository.remove(id);
+
+    // Update storage stats after deleting song
+    storageService.updateStorageStats().catch(err => console.error('Failed to update storage stats:', err));
+
     return { success: true };
 }
 
