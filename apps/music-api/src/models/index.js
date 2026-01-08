@@ -15,6 +15,7 @@ const { initStorageStats } = require("./storageStats.model");
 const { initPlaylistLike } = require("./playlistLike.model");
 // Favorites
 const { initFavorite } = require("./favorite.model");
+const { initUserThemeSettings } = require("./userThemeSettings.model");
 
 const sequelize = new Sequelize({
     dialect: "mysql",
@@ -37,6 +38,7 @@ const SharedPlaylist = require("./sharedPlaylist.model")(sequelize);
 const ActivityLog = initActivityLog(sequelize);
 const PlaylistLike = initPlaylistLike(sequelize);
 const Favorite = initFavorite(sequelize);
+const UserThemeSettings = initUserThemeSettings(sequelize);
 
 // Associations
 User.hasMany(Playlist, { foreignKey: "user_id" });
@@ -83,6 +85,10 @@ Favorite.belongsTo(Song, { foreignKey: "song_id", as: "song" });
 User.belongsToMany(Song, { through: Favorite, foreignKey: "user_id", as: "likedSongs" });
 Song.belongsToMany(User, { through: Favorite, foreignKey: "song_id", as: "likedBy" });
 
+// User Theme Settings
+User.hasOne(UserThemeSettings, { foreignKey: "user_id", as: "themeSettings" });
+UserThemeSettings.belongsTo(User, { foreignKey: "user_id" });
+
 module.exports = {
     sequelize,
     User,
@@ -96,6 +102,7 @@ module.exports = {
     SharedPlaylist,
     ActivityLog,
     PlaylistLike,
-    Favorite
+    Favorite,
+    UserThemeSettings
 };
 

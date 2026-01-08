@@ -50,26 +50,47 @@ async function getAnalytics() {
                 : 0,
         }));
 
-        // Mock plays per day (would need a plays/listens table for real tracking)
-        const playsPerDay = [
-            { day: "Mon", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Tue", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Wed", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Thu", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Fri", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Sat", plays: Math.floor(Math.random() * 100) + 50 },
-            { day: "Sun", plays: Math.floor(Math.random() * 100) + 50 },
-        ];
+        // Get plays per day from ActivityLog (last 7 days)
+        const { ActivityLog } = require("../models");
+        const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const playsPerDayRaw = await ActivityLog.findAll({
+            where: {
+                action: "PLAY_SONG",
+                createdAt: {
+                    [require("sequelize").Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                }
+            },
+            attributes: [
+                [sequelize.fn("DAYOFWEEK", sequelize.col("createdAt")), "dayOfWeek"],
+                [sequelize.fn("COUNT", sequelize.col("id")), "count"]
+            ],
+            group: [sequelize.fn("DAYOFWEEK", sequelize.col("createdAt"))],
+            raw: true
+        });
+
+        // Build plays per day array (Mon-Sun)
+        const playsMap = {};
+        playsPerDayRaw.forEach(row => {
+            const dayIndex = (parseInt(row.dayOfWeek) + 5) % 7; // Convert MySQL DAYOFWEEK to Mon=0
+            playsMap[dayIndex] = parseInt(row.count);
+        });
+        const playsPerDay = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => ({
+            day,
+            plays: playsMap[i] || 0
+        }));
+
+        // Calculate totalPlays from sum of all song views
+        const totalPlaysResult = await Song.sum("views") || 0;
 
         return {
-            totalPlays: totalSongs * 10, // Mock calculation
+            totalPlays: totalPlaysResult,
             totalUsers,
             activeSessions: activeUsers,
             playsPerDay,
             topSongs: topSongs.map((s) => ({
                 title: s.title,
-                artist: s.artist?.artist_name || "Unknown",
-                plays: s.views || Math.floor(Math.random() * 500) + 100,
+                artist: s.artist?.name || "Unknown",
+                plays: s.views || 0,
             })),
             genreDistribution,
         };
@@ -80,32 +101,29 @@ async function getAnalytics() {
 }
 
 /**
- * Get user activity logs (mock for now - would need activity_logs table)
+ * Get user activity logs (from ActivityLog table)
  */
 async function getUserLogs(userId) {
     try {
-        const user = await User.findByPk(userId);
-        if (!user) {
-            return [];
-        }
+        const { ActivityLog } = require("../models");
 
-        // Return mock logs
-        return [
-            {
-                id: "1",
-                userId: userId,
-                action: "LOGIN",
-                details: `Logged in from Chrome/Windows`,
-                timestamp: new Date().toISOString(),
-            },
-            {
-                id: "2",
-                userId: userId,
-                action: "PLAY_SONG",
-                details: `Played a song`,
-                timestamp: new Date(Date.now() - 3600000).toISOString(),
-            },
-        ];
+        const logs = await ActivityLog.findAll({
+            where: { user_id: userId },
+            order: [['createdAt', 'DESC']],
+            limit: 50,
+        });
+
+        return logs.map(log => ({
+            id: log.id,
+            userId: log.user_id,
+            action: log.action,
+            details: typeof log.details === 'object'
+                ? JSON.stringify(log.details)
+                : (log.details || `Action: ${log.action}`),
+            timestamp: log.createdAt,
+            ipAddress: log.ip_address,
+            userAgent: log.user_agent,
+        }));
     } catch (error) {
         logger.error("Error in getUserLogs:", error);
         return [];
