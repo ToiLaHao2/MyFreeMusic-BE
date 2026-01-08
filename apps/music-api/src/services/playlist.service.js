@@ -205,7 +205,7 @@ async function getSharedPlaylists(userId) {
                 ]
             }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['created_at', 'DESC']]
     });
 
     // Transform to friendly format
@@ -307,7 +307,6 @@ module.exports = {
     autoAddSongToUploads,
     sharePlaylist,
     unsharePlaylist,
-    getSharedPlaylists,
     getSharedPlaylists,
     getCommunityPlaylists,
     toggleLike

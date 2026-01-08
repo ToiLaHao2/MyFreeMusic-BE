@@ -131,8 +131,10 @@ async function updateProfile(req, res) {
         const user_id = req.user_id; // From token
         const { fullName, email, bio, theme } = req.body;
         const avatarFile = req.files?.avatar?.[0];
+        const allSongsCoverFile = req.files?.customAllSongsCover?.[0];
+        const likedSongsCoverFile = req.files?.customLikedSongsCover?.[0];
 
-        const result = await authService.updateProfile(user_id, { fullName, email, bio, theme }, avatarFile);
+        const result = await authService.updateProfile(user_id, { fullName, email, bio, theme }, { avatarFile, allSongsCoverFile, likedSongsCoverFile });
 
         if (!result.success) {
             return sendError(res, 400, result.message);

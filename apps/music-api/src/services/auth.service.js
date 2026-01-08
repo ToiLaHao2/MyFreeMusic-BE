@@ -59,7 +59,9 @@ async function login(email, password, deviceType, rememberMe) {
             email: user.user_email,
             name: user.user_full_name,
             role: user.role,
-            avatar: user.user_profile_picture
+            avatar: user.user_profile_picture,
+            customAllSongsCover: user.custom_all_songs_cover, // Add this
+            customLikedSongsCover: user.custom_liked_songs_cover // Add this
         },
     };
 }
@@ -131,7 +133,10 @@ async function changePassword(userId, oldPassword, newPassword) {
 /**
  * Cập nhật thông tin profile
  */
-async function updateProfile(userId, data, avatarFile) {
+/**
+ * Cập nhật thông tin profile
+ */
+async function updateProfile(userId, data, files = {}) {
     const user = await userRepository.findById(userId);
     if (!user) {
         return { success: false, message: "Người dùng không tồn tại." };
@@ -143,39 +148,57 @@ async function updateProfile(userId, data, avatarFile) {
     if (data.bio !== undefined) updateData.user_bio = data.bio;
     if (data.theme !== undefined) updateData.user_theme = data.theme;
 
-    // if (data.email) updateData.user_email = data.email; // Usually restricted, maybe separate flow?
-
     if (Object.keys(updateData).length > 0) {
         await userRepository.update(userId, updateData);
     }
 
-    // 2. Handle Avatar Upload
-    if (avatarFile) {
+    // 2. Handle File Uploads
+    const storage = require("../util/storage");
+    const fs = require("fs");
+    const saveFile = async (file, slugPrefix, updateFn) => {
+        if (!file) return;
+
         // Validate
-        const allowedImageTypes = ["image/jpeg", "image/png"];
-        if (!allowedImageTypes.includes(avatarFile.mimetype)) {
-            return { success: false, message: "Định dạng ảnh không hợp lệ (chỉ .jpg, .png)" };
+        const allowedImageTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedImageTypes.includes(file.mimetype)) {
+            throw new Error(`Invalid format for ${file.fieldname}`);
         }
 
-        const fs = require("fs");
         try {
-            // Slug for avatar: user-{id}-{timestamp}
-            const slug = `user-${userId}-${Date.now()}`;
-            const storage = require("../util/storage");
+            const slug = `${slugPrefix}-${userId}-${Date.now()}`;
+            const url = await storage.saveCover(file, slug); // Reuse saveCover logic
 
-            // Reusing saveCover logic which handles local/cloud storage
-            const avatarUrl = await storage.saveCover(avatarFile, slug);
+            await updateFn(url);
 
-            await userRepository.updateAvatar(userId, avatarUrl);
-
-            // Clean up temp file (storage.saveCover might do this for LOCAL but let's be safe if logic changes)
-            if (fs.existsSync(avatarFile.path)) {
-                // fs.unlinkSync(avatarFile.path); // storage.saveCover does this for LOCAL. 
+            if (fs.existsSync(file.path)) {
+                // fs.unlinkSync(file.path); 
             }
         } catch (err) {
-            console.error("Avatar upload failed:", err);
-            return { success: false, message: "Lỗi khi upload avatar." };
+            console.error(`Upload failed for ${file.fieldname}:`, err);
+            // Don't block whole request?
         }
+    };
+
+    const { avatarFile, allSongsCoverFile, likedSongsCoverFile } = files;
+
+    if (avatarFile) {
+        await saveFile(avatarFile, 'user', async (url) => {
+            await userRepository.updateAvatar(userId, url);
+        });
+    }
+
+    if (allSongsCoverFile) {
+        await saveFile(allSongsCoverFile, 'cover-all', async (url) => {
+            user.custom_all_songs_cover = url;
+            await user.save();
+        });
+    }
+
+    if (likedSongsCoverFile) {
+        await saveFile(likedSongsCoverFile, 'cover-liked', async (url) => {
+            user.custom_liked_songs_cover = url;
+            await user.save();
+        });
     }
 
     // Return updated user
@@ -189,7 +212,9 @@ async function updateProfile(userId, data, avatarFile) {
             role: updatedUser.role,
             avatar: updatedUser.user_profile_picture,
             bio: updatedUser.user_bio,
-            theme: updatedUser.user_theme
+            theme: updatedUser.user_theme,
+            customAllSongsCover: updatedUser.custom_all_songs_cover,
+            customLikedSongsCover: updatedUser.custom_liked_songs_cover
         }
     };
 }

@@ -17,6 +17,8 @@ const initUser = (sequelize) => {
             user_profile_picture: DataTypes.STRING,
             user_bio: DataTypes.TEXT,
             user_theme: { type: DataTypes.STRING, defaultValue: 'Dark' },
+            custom_all_songs_cover: DataTypes.STRING,
+            custom_liked_songs_cover: DataTypes.STRING,
             role: {
                 type: DataTypes.ENUM('ADMIN', 'USER'),
                 defaultValue: 'USER',

@@ -16,6 +16,10 @@ const upload = require("../middlewares/upload.middleware");
 router.post("/logout", authMiddleware, authController.logout);
 router.post("/change-password", authMiddleware, authController.changePassword);
 
-router.put("/me", authMiddleware, upload.fields([{ name: 'avatar', maxCount: 1 }]), authController.updateProfile);
+router.put("/me", authMiddleware, upload.fields([
+    { name: 'avatar', maxCount: 1 },
+    { name: 'customAllSongsCover', maxCount: 1 },
+    { name: 'customLikedSongsCover', maxCount: 1 }
+]), authController.updateProfile);
 
 module.exports = router;
