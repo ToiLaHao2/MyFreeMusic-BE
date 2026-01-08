@@ -211,6 +211,7 @@ async function getStorageStats(forceRefresh = false) {
                     ? diskSpace?.total || STORAGE_LIMIT_BYTES
                     : STORAGE_LIMIT_BYTES;
                 // Calculate usage
+                const usedBytes = parseInt(dbStats.total_size_bytes || 0);
                 const totalDiskUsed = diskSpace ? (diskSpace.total - diskSpace.free) : usedBytes;
                 const otherUsedBytes = Math.max(0, totalDiskUsed - usedBytes);
 
@@ -343,7 +344,7 @@ async function getDatabaseStats() {
         const { sequelize } = require("../models");
 
         // Get table sizes (MySQL specific)
-        const [results] = await sequelize.query(`
+        const results = await sequelize.query(`
             SELECT 
                 table_name AS tableName,
                 ROUND(((data_length + index_length) / 1024 / 1024), 2) AS sizeMB,
@@ -351,7 +352,13 @@ async function getDatabaseStats() {
             FROM information_schema.TABLES 
             WHERE table_schema = DATABASE()
             ORDER BY (data_length + index_length) DESC
-        `);
+        `, { type: sequelize.QueryTypes.SELECT });
+
+        logger.info(`[DEBUG] Database stats query results: ${JSON.stringify(results)}`);
+
+        if (!results || results.length === 0) {
+            logger.warn("[DEBUG] No tables found or empty result set.");
+        }
 
         const totalSizeMB = results.reduce((acc, t) => acc + parseFloat(t.sizeMB || 0), 0);
 

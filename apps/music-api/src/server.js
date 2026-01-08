@@ -87,6 +87,7 @@ app.use("/api/artists", require("./routes/artist.route"));
 app.use("/api/admin", require("./routes/admin.route"));
 app.use("/api/analytics", require("./routes/analytics.route"));
 app.use("/api/storage", require("./routes/storage.route"));
+app.use("/api/favorites", require("./routes/favorite.route"));
 
 app.get("/", (req, res) => {
     res.send("Đây là server Express 🎶");

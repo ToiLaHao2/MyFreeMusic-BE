@@ -2,6 +2,7 @@
 // Only handles HTTP request/response, delegates logic to service
 
 const songService = require("../services/song.service");
+const activityService = require("../services/activity.service");
 const logger = require("../util/logger");
 const { sendError, sendSuccess } = require("../util/response");
 
@@ -42,6 +43,8 @@ async function AddNewSongFromDevice(req, res) {
             });
         }
 
+        activityService.logActivity(req.user.id, "SONG_UPLOAD_DEVICE", result.song.id, { title: songTitle }, req);
+
         return sendSuccess(res, 201, {
             isDuplicate: false,
             message: "Thêm bài hát thành công.",
@@ -73,6 +76,8 @@ async function AddNewSongFromYtUrl(req, res) {
                 reason: result.reason,
             });
         }
+
+        activityService.logActivity(req.user.id, "SONG_UPLOAD_YOUTUBE", result.song.id, { ytbURL }, req);
 
         return sendSuccess(res, 201, {
             isDuplicate: false,
@@ -142,6 +147,9 @@ async function UpdateSong(req, res) {
 async function DeleteSong(req, res) {
     try {
         await songService.deleteSong(req.params.id);
+
+        activityService.logActivity(req.user.id, "SONG_DELETE", req.params.id, null, req);
+
         return sendSuccess(res, 200, {
             message: "Xóa bài hát thành công.",
         });

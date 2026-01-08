@@ -15,6 +15,8 @@ const initUser = (sequelize) => {
             user_hash_password: DataTypes.STRING,
             user_phone_number: DataTypes.STRING,
             user_profile_picture: DataTypes.STRING,
+            user_bio: DataTypes.TEXT,
+            user_theme: { type: DataTypes.STRING, defaultValue: 'Dark' },
             role: {
                 type: DataTypes.ENUM('ADMIN', 'USER'),
                 defaultValue: 'USER',

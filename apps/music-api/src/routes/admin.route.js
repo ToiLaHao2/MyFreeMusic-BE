@@ -21,6 +21,7 @@ const requireAdmin = (req, res, next) => {
 adminRouter.use(requireAdmin);
 
 // User management
+adminRouter.post("/users", adminController.createUser);
 adminRouter.get("/users", adminController.getAllUsers);
 adminRouter.get("/users/:id", adminController.getUserById);
 adminRouter.patch("/users/:id/status", adminController.updateUserStatus);
@@ -29,5 +30,9 @@ adminRouter.delete("/users/:id", adminController.deleteUser);
 
 // Dashboard stats
 adminRouter.get("/stats", adminController.getDashboardStats);
+
+// Activity Logs
+adminRouter.get("/logs", adminController.getActivityLogs);
+adminRouter.delete("/logs", adminController.clearActivityLogs);
 
 module.exports = adminRouter;

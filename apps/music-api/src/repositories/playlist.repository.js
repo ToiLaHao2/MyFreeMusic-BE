@@ -5,6 +5,10 @@ const PlaylistRepository = {
         return await Playlist.create(data);
     },
 
+    async findAll(options) {
+        return await Playlist.findAll(options);
+    },
+
     async findById(id) {
         return await Playlist.findByPk(id, {
             include: [

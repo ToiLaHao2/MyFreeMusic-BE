@@ -8,7 +8,14 @@ router.post("/login", authController.login);
 router.post("/refresh", authController.refreshAccessToken);
 
 // Protected routes
+const upload = require("../middlewares/upload.middleware");
+
+// ...
+
+// Protected routes
 router.post("/logout", authMiddleware, authController.logout);
 router.post("/change-password", authMiddleware, authController.changePassword);
+
+router.put("/me", authMiddleware, upload.fields([{ name: 'avatar', maxCount: 1 }]), authController.updateProfile);
 
 module.exports = router;

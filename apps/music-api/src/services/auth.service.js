@@ -128,9 +128,76 @@ async function changePassword(userId, oldPassword, newPassword) {
     return { success: true };
 }
 
+/**
+ * Cập nhật thông tin profile
+ */
+async function updateProfile(userId, data, avatarFile) {
+    const user = await userRepository.findById(userId);
+    if (!user) {
+        return { success: false, message: "Người dùng không tồn tại." };
+    }
+
+    // 1. Update basic info (if provided)
+    const updateData = {};
+    if (data.fullName) updateData.user_full_name = data.fullName;
+    if (data.bio !== undefined) updateData.user_bio = data.bio;
+    if (data.theme !== undefined) updateData.user_theme = data.theme;
+
+    // if (data.email) updateData.user_email = data.email; // Usually restricted, maybe separate flow?
+
+    if (Object.keys(updateData).length > 0) {
+        await userRepository.update(userId, updateData);
+    }
+
+    // 2. Handle Avatar Upload
+    if (avatarFile) {
+        // Validate
+        const allowedImageTypes = ["image/jpeg", "image/png"];
+        if (!allowedImageTypes.includes(avatarFile.mimetype)) {
+            return { success: false, message: "Định dạng ảnh không hợp lệ (chỉ .jpg, .png)" };
+        }
+
+        const fs = require("fs");
+        try {
+            // Slug for avatar: user-{id}-{timestamp}
+            const slug = `user-${userId}-${Date.now()}`;
+            const storage = require("../util/storage");
+
+            // Reusing saveCover logic which handles local/cloud storage
+            const avatarUrl = await storage.saveCover(avatarFile, slug);
+
+            await userRepository.updateAvatar(userId, avatarUrl);
+
+            // Clean up temp file (storage.saveCover might do this for LOCAL but let's be safe if logic changes)
+            if (fs.existsSync(avatarFile.path)) {
+                // fs.unlinkSync(avatarFile.path); // storage.saveCover does this for LOCAL. 
+            }
+        } catch (err) {
+            console.error("Avatar upload failed:", err);
+            return { success: false, message: "Lỗi khi upload avatar." };
+        }
+    }
+
+    // Return updated user
+    const updatedUser = await userRepository.findById(userId);
+    return {
+        success: true,
+        user: {
+            id: updatedUser.id,
+            email: updatedUser.user_email,
+            name: updatedUser.user_full_name,
+            role: updatedUser.role,
+            avatar: updatedUser.user_profile_picture,
+            bio: updatedUser.user_bio,
+            theme: updatedUser.user_theme
+        }
+    };
+}
+
 module.exports = {
     login,
     logout,
     refreshAccessToken,
     changePassword,
+    updateProfile,
 };

@@ -1,5 +1,6 @@
 // controllers/auth.controller.js
 const authService = require("../services/auth.service");
+const activityService = require("../services/activity.service");
 const { sendSuccess, sendError } = require("../util/response");
 const logger = require("../util/logger");
 
@@ -52,6 +53,9 @@ async function login(req, res) {
             return sendError(res, 401, result.message);
         }
 
+        // Log Activity
+        activityService.logActivity(result.user.id, "USER_LOGIN", null, { deviceType }, req);
+
         return sendSuccess(res, 200, {
             message: "Đăng nhập thành công.",
             accessToken: result.accessToken,
@@ -77,6 +81,9 @@ async function logout(req, res) {
         if (!result.success) {
             return sendError(res, 404, result.message);
         }
+
+        // Log Activity
+        activityService.logActivity(user_id, "USER_LOGOUT", null, null, req);
 
         return sendSuccess(res, 200, {
             message: "Đăng xuất thành công.",
@@ -111,7 +118,35 @@ async function changePassword(req, res) {
             message: "Đổi mật khẩu thành công.",
         });
     } catch (error) {
-        logger.error("Error during change password: ", error);
+        logger.error("Error during password change: ", error);
+        return sendError(res, 500, "Lỗi không xác định.");
+    }
+}
+
+/**
+ * Cập nhật profile
+ */
+async function updateProfile(req, res) {
+    try {
+        const user_id = req.user_id; // From token
+        const { fullName, email, bio, theme } = req.body;
+        const avatarFile = req.files?.avatar?.[0];
+
+        const result = await authService.updateProfile(user_id, { fullName, email, bio, theme }, avatarFile);
+
+        if (!result.success) {
+            return sendError(res, 400, result.message);
+        }
+
+        // Log Activity
+        activityService.logActivity(user_id, "USER_UPDATE_PROFILE", null, null, req);
+
+        return sendSuccess(res, 200, {
+            message: "Cập nhật thông tin thành công.",
+            user: result.user
+        });
+    } catch (error) {
+        logger.error("Error during profile update: ", error);
         return sendError(res, 500, "Lỗi không xác định.");
     }
 }
@@ -121,4 +156,5 @@ module.exports = {
     login,
     logout,
     changePassword,
+    updateProfile,
 };

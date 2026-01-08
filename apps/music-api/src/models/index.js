@@ -10,7 +10,11 @@ const { initGenre } = require("./genre.model");
 const { initArtist } = require("./artist.model");
 const { initRefreshToken } = require("./refreshToken.model");
 const { initPlaylistSong } = require("./playlistSong.model");
+const { initActivityLog } = require("./activityLog.model");
 const { initStorageStats } = require("./storageStats.model");
+const { initPlaylistLike } = require("./playlistLike.model");
+// Favorites
+const { initFavorite } = require("./favorite.model");
 
 const sequelize = new Sequelize({
     dialect: "mysql",
@@ -29,6 +33,10 @@ const Artist = initArtist(sequelize);
 const RefreshToken = initRefreshToken(sequelize);
 const PlaylistSong = initPlaylistSong(sequelize);
 const StorageStats = initStorageStats(sequelize);
+const SharedPlaylist = require("./sharedPlaylist.model")(sequelize);
+const ActivityLog = initActivityLog(sequelize);
+const PlaylistLike = initPlaylistLike(sequelize);
+const Favorite = initFavorite(sequelize);
 
 // Associations
 User.hasMany(Playlist, { foreignKey: "user_id" });
@@ -43,6 +51,38 @@ Song.belongsTo(Artist, { foreignKey: "artist_id", as: "artist" });
 Playlist.belongsToMany(Song, { through: PlaylistSong, foreignKey: "playlist_id" });
 Song.belongsToMany(Playlist, { through: PlaylistSong, foreignKey: "song_id" });
 
+// Shared Playlists
+User.hasMany(SharedPlaylist, { foreignKey: "shared_with_user_id" });
+SharedPlaylist.belongsTo(User, { foreignKey: "shared_with_user_id", as: "user" });
+
+Playlist.hasMany(SharedPlaylist, { foreignKey: "playlist_id" });
+SharedPlaylist.belongsTo(Playlist, { foreignKey: "playlist_id", as: "playlist" });
+
+// Playlist Likes
+User.belongsToMany(Playlist, { through: PlaylistLike, foreignKey: "user_id", as: "likedPlaylists" });
+Playlist.belongsToMany(User, { through: PlaylistLike, foreignKey: "playlist_id", as: "likedByUsers" });
+
+User.hasMany(PlaylistLike, { foreignKey: "user_id" });
+PlaylistLike.belongsTo(User, { foreignKey: "user_id" });
+
+Playlist.hasMany(PlaylistLike, { foreignKey: "playlist_id" });
+PlaylistLike.belongsTo(Playlist, { foreignKey: "playlist_id" });
+
+// Activity Logs
+User.hasMany(ActivityLog, { foreignKey: "user_id" });
+ActivityLog.belongsTo(User, { foreignKey: "user_id" });
+
+// Favorites
+User.hasMany(Favorite, { foreignKey: "user_id", as: "favorites" });
+Favorite.belongsTo(User, { foreignKey: "user_id" });
+
+Song.hasMany(Favorite, { foreignKey: "song_id" });
+Favorite.belongsTo(Song, { foreignKey: "song_id", as: "song" });
+
+// Helper: User <-> Song via Favorite (Optional but useful)
+User.belongsToMany(Song, { through: Favorite, foreignKey: "user_id", as: "likedSongs" });
+Song.belongsToMany(User, { through: Favorite, foreignKey: "song_id", as: "likedBy" });
+
 module.exports = {
     sequelize,
     User,
@@ -52,6 +92,10 @@ module.exports = {
     Artist,
     RefreshToken,
     PlaylistSong,
-    StorageStats
+    StorageStats,
+    SharedPlaylist,
+    ActivityLog,
+    PlaylistLike,
+    Favorite
 };
 
