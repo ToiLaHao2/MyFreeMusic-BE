@@ -6,8 +6,12 @@ const path = require("path");
 const fs = require("fs");
 
 // Path to fpcalc executable
-// Path to fpcalc executable in MyFreeMusic-BE/tools/
-const FPCALC_PATH = path.join(__dirname, "..", "..", "..", "..", "tools", "fpcalc.exe");
+// Default to included tool on Windows, or system command on Linux/Docker
+let FPCALC_PATH = path.join(__dirname, "..", "..", "..", "..", "tools", "fpcalc.exe");
+
+if (process.platform !== "win32" || !fs.existsSync(FPCALC_PATH)) {
+    FPCALC_PATH = "fpcalc";
+}
 
 /**
  * Generate audio fingerprint from file
@@ -16,8 +20,8 @@ const FPCALC_PATH = path.join(__dirname, "..", "..", "..", "..", "tools", "fpcal
  */
 async function generateFingerprint(audioFilePath) {
     return new Promise((resolve) => {
-        // Check if fpcalc exists
-        if (!fs.existsSync(FPCALC_PATH)) {
+        // Check if fpcalc exists (skip check if using system command)
+        if (FPCALC_PATH !== "fpcalc" && !fs.existsSync(FPCALC_PATH)) {
             console.warn("fpcalc not found. Download from https://acoustid.org/chromaprint");
             resolve(null);
             return;

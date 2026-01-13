@@ -12,6 +12,8 @@ const storage = require("../util/storage");
 const fs = require("fs");
 const path = require("path");
 const playlistService = require("./playlist.service");
+const { R2_PUBLIC_URL } = require("../config/r2.config");
+const STORAGE_TYPE = process.env.STORAGE_TYPE || "LOCAL";
 
 /**
  * Lấy tất cả bài hát
@@ -136,21 +138,53 @@ async function addSongFromDevice(data, songFile, coverFile, options = {}) {
     // Save cover image using storage abstraction
     const coverUrl = await storage.saveCover(coverFile, slug);
 
-    // Save original audio file
-    storage.saveOriginalAudio(songFile, slug);
+    // Save original audio file and convert to HLS
+    let finalFileUrl = "";
 
-    // Convert to HLS
-    const hlsOutputPath = storage.getHlsOutputPath(slug);
-    await convertToHLS(songFile.path, hlsOutputPath);
+    if (STORAGE_TYPE === "CLOUDFLARE_R2") {
+        // 1. Upload original to R2
+        const originalKey = `original/${slug}.mp3`;
+        await storageService.uploadToR2(songFile.path, originalKey);
 
-    // Clean up temp upload file
-    if (fs.existsSync(songFile.path)) fs.unlinkSync(songFile.path);
+        // 2. Convert to HLS locally (temp)
+        const hlsOutputPath = path.join(storage.LOCAL_PATHS.temp, slug);
+        storage.ensureDir(hlsOutputPath);
+
+        await convertToHLS(songFile.path, hlsOutputPath);
+
+        // 3. Upload HLS files to R2
+        const hlsFiles = fs.readdirSync(hlsOutputPath);
+        for (const file of hlsFiles) {
+            const hlsKey = `hls/${slug}/${file}`;
+            await storageService.uploadToR2(path.join(hlsOutputPath, file), hlsKey);
+        }
+
+        // 4. Set R2 URL
+        finalFileUrl = `${R2_PUBLIC_URL}/hls/${slug}/index.m3u8`;
+
+        // 5. Cleanup
+        if (fs.existsSync(songFile.path)) fs.unlinkSync(songFile.path);
+        if (fs.existsSync(hlsOutputPath)) fs.rmSync(hlsOutputPath, { recursive: true, force: true });
+
+    } else {
+        // LOCAL STORAGE FLOW
+        storage.saveOriginalAudio(songFile, slug);
+
+        // Convert to HLS
+        const hlsOutputPath = storage.getHlsOutputPath(slug);
+        await convertToHLS(songFile.path, hlsOutputPath);
+
+        finalFileUrl = storage.getHlsUrl(slug);
+
+        // Clean up temp upload file
+        if (fs.existsSync(songFile.path)) fs.unlinkSync(songFile.path);
+    }
 
     // Create song in database with fingerprint
     const newSong = await songRepository.create({
         title: songTitle,
         slug: slug,
-        fileUrl: storage.getHlsUrl(slug),
+        fileUrl: finalFileUrl,
         coverUrl: coverUrl,
         genre_id: songGenreId || null,
         artist_id: finalArtistId,
@@ -273,17 +307,49 @@ async function addSongFromYoutube(ytbURL, options = {}) {
     const slug = generateSlug(title);
 
 
-    // Save original file using storage abstraction
-    storage.ensureDir(storage.PATHS.original);
-    const originalFilePath = path.join(storage.PATHS.original, `${slug}.mp3`);
-    fs.copyFileSync(filePath, originalFilePath);
+    // Save original file and convert to HLS
+    let finalFileUrl = "";
 
-    // Convert to HLS
-    const hlsOutputPath = storage.getHlsOutputPath(slug);
-    await convertToHLS(filePath, hlsOutputPath);
+    if (STORAGE_TYPE === "CLOUDFLARE_R2") {
+        // 1. Upload original to R2
+        const originalKey = `original/${slug}.mp3`;
+        await storageService.uploadToR2(filePath, originalKey);
 
-    // Clean up temp downloaded file
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        // 2. Convert to HLS locally (temp)
+        const hlsOutputPath = path.join(storage.LOCAL_PATHS.temp, slug);
+        storage.ensureDir(hlsOutputPath);
+
+        await convertToHLS(filePath, hlsOutputPath);
+
+        // 3. Upload HLS files to R2
+        const hlsFiles = fs.readdirSync(hlsOutputPath);
+        for (const file of hlsFiles) {
+            const hlsKey = `hls/${slug}/${file}`;
+            await storageService.uploadToR2(path.join(hlsOutputPath, file), hlsKey);
+        }
+
+        // 4. Set R2 URL
+        finalFileUrl = `${R2_PUBLIC_URL}/hls/${slug}/index.m3u8`;
+
+        // 5. Cleanup
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+        if (fs.existsSync(hlsOutputPath)) fs.rmSync(hlsOutputPath, { recursive: true, force: true });
+
+    } else {
+        // LOCAL STORAGE FLOW
+        storage.ensureDir(storage.PATHS.original);
+        const originalFilePath = path.join(storage.PATHS.original, `${slug}.mp3`);
+        fs.copyFileSync(filePath, originalFilePath);
+
+        // Convert to HLS
+        const hlsOutputPath = storage.getHlsOutputPath(slug);
+        await convertToHLS(filePath, hlsOutputPath);
+
+        // Clean up temp downloaded file
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+        finalFileUrl = storage.getHlsUrl(slug);
+    }
 
     // Save cover using storage abstraction
     const coverUrl = await storage.saveCoverFromUrl(thumbnail_url, slug);
@@ -292,7 +358,7 @@ async function addSongFromYoutube(ytbURL, options = {}) {
     const newSong = await songRepository.create({
         title: title,
         slug: slug,
-        fileUrl: storage.getHlsUrl(slug),
+        fileUrl: finalFileUrl,
         coverUrl: coverUrl,
         source: "YOUTUBE",
         youtube_id: youtubeId,
@@ -337,7 +403,18 @@ async function deleteSong(id) {
         throw new Error("Bài hát không tồn tại.");
     }
 
-    // TODO: Delete HLS files from storage
+    // Delete HLS files from storage
+    if (song.slug) {
+        if (STORAGE_TYPE === "CLOUDFLARE_R2") {
+            // Delete original
+            await storageService.deleteFromR2(`original/${song.slug}.mp3`);
+            // Delete HLS folder
+            await storageService.deleteFolderFromR2(`hls/${song.slug}/`);
+        } else {
+            // Local delete (todo: implement if needed, or rely on manual cleanup)
+        }
+    }
+
     // TODO: Delete cover from Cloudinary
 
     await songRepository.remove(id);

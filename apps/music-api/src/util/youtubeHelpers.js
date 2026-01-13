@@ -11,20 +11,35 @@ async function downloadYoutubeAudio(ytbURL) {
     storage.ensureDir(storage.PATHS.temp);
     const outputPath = path.join(storage.PATHS.temp, `${id}.mp3`);
 
-    // Paths to tools in MyFreeMusic-BE/tools/
-    const ytDlpPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "yt-dlp.exe");
-    const ffmpegPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "ffmpeg", "bin", "ffmpeg.exe");
+    // Paths to tools or system commands
+    let ytDlpPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "yt-dlp.exe");
+    let ffmpegPath = path.resolve(__dirname, "..", "..", "..", "..", "tools", "ffmpeg", "bin", "ffmpeg.exe");
 
-    // Verify tools exist
-    if (!fs.existsSync(ytDlpPath)) {
+    const isWin = process.platform === "win32";
+
+    // Fallback to system commands if tools not found or not Windows
+    if (!isWin || !fs.existsSync(ytDlpPath)) {
+        ytDlpPath = "yt-dlp";
+    }
+    if (!isWin || !fs.existsSync(ffmpegPath)) {
+        ffmpegPath = "ffmpeg";
+    }
+
+    // Verify tools exist (skip check for system commands)
+    if (ytDlpPath !== "yt-dlp" && !fs.existsSync(ytDlpPath)) {
         throw new Error(`yt-dlp.exe not found at: ${ytDlpPath}`);
     }
-    if (!fs.existsSync(ffmpegPath)) {
+    if (ffmpegPath !== "ffmpeg" && !fs.existsSync(ffmpegPath)) {
         throw new Error(`ffmpeg.exe not found at: ${ffmpegPath}`);
     }
 
+    // Prepare ffmpeg location argument
+    // If using system ffmpeg, we can usually omit --ffmpeg-location or point to executable if needed
+    // yt-dlp usually finds ffmpeg in PATH, but if we want to be explicit:
+    const ffmpegArg = ffmpegPath === "ffmpeg" ? "" : `--ffmpeg-location "${ffmpegPath}"`;
+
     // yt-dlp command with --no-playlist to avoid downloading entire playlists
-    const command = `"${ytDlpPath}" --ffmpeg-location "${ffmpegPath}" -x --audio-format mp3 --no-playlist -o "${outputPath}" "${ytbURL}"`;
+    const command = `"${ytDlpPath}" ${ffmpegArg} -x --audio-format mp3 --no-playlist -o "${outputPath}" "${ytbURL}"`;
 
     console.log(`[YouTube] Starting download...`);
     console.log(`[YouTube] URL: ${ytbURL}`);
